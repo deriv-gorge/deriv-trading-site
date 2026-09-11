@@ -1,85 +1,219 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deriv Trader</title>
-    <link rel="stylesheet" href="style.css">
+
+    <title>Deriv Login Callback</title>
+
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .box {
+            width: 90%;
+            max-width: 500px;
+            padding: 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        #status {
+            margin: 20px 0;
+            line-height: 1.6;
+            word-break: break-word;
+        }
+
+        .success {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+
+        .info {
+            color: #333;
+        }
+
+        a {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: #ff444f;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+        }
+    </style>
 </head>
 
 <body>
 
-    <h1>DERIV TRADER</h1>
+<div class="box">
+    <h1>Deriv Authentication</h1>
 
-    <p>Welcome to my Deriv third-party trading site.</p>
+    <div id="status" class="info">
+        Processing your login...
+    </div>
 
-    <button onclick="connectDeriv()">Connect Deriv</button>
+    <a id="homeButton"
+       href="https://deriv-gorge.github.io/deriv-trading-site/"
+       style="display:none;">
+        Return to Home
+    </a>
+</div>
 
-    <script>
-        async function connectDeriv() {
+<script>
+    (function () {
 
-            // Your Deriv OAuth App ID
-            const clientId = "34mQW3hmK3J2yzNHV4LdA";
+        const status = document.getElementById("status");
+        const homeButton = document.getElementById("homeButton");
 
-            // Your exact registered redirect URL
-            const redirectUri =
-                "https://deriv-gorge.github.io/deriv-trading-site/callback.html";
+        const params = new URLSearchParams(window.location.search);
 
-            // Generate a random state
-            const state = crypto.randomUUID();
+        const code = params.get("code");
+        const returnedState = params.get("state");
+        const error = params.get("error");
+        const errorDescription = params.get("error_description");
 
-            // Generate PKCE code verifier
-            const codeVerifier = generateCodeVerifier();
+        /*
+         * 1. Check whether Deriv returned an OAuth error.
+         */
+        if (error) {
+            status.className = "error";
 
-            // Generate PKCE code challenge
-            const codeChallenge =
-                await generateCodeChallenge(codeVerifier);
+            status.innerHTML =
+                "<strong>Login was not completed.</strong><br><br>" +
+                "Error: " + escapeHtml(error) +
+                (errorDescription
+                    ? "<br>" + escapeHtml(errorDescription)
+                    : "");
 
-            // Save these for the callback
-            sessionStorage.setItem("oauth_state", state);
-            sessionStorage.setItem("code_verifier", codeVerifier);
-
-            // Create Deriv OAuth URL
-            const oauthUrl =
-                "https://auth.deriv.com/oauth2/auth" +
-                "?response_type=code" +
-                "&client_id=" + encodeURIComponent(clientId) +
-                "&redirect_uri=" + encodeURIComponent(redirectUri) +
-                "&scope=trade" +
-                "&state=" + encodeURIComponent(state) +
-                "&code_challenge=" + encodeURIComponent(codeChallenge) +
-                "&code_challenge_method=S256";
-
-            // Send user to Deriv
-            window.location.href = oauthUrl;
+            homeButton.style.display = "inline-block";
+            return;
         }
 
-        function generateCodeVerifier() {
-            const array = new Uint8Array(32);
-            crypto.getRandomValues(array);
+        /*
+         * 2. Make sure an authorization code was returned.
+         */
+        if (!code) {
+            status.className = "error";
 
-            return Array.from(array, byte =>
-                byte.toString(16).padStart(2, "0")
-            ).join("");
+            status.innerHTML =
+                "<strong>No authorization code was received.</strong><br><br>" +
+                "Please return to the home page and try again.";
+
+            homeButton.style.display = "inline-block";
+            return;
         }
 
-        async function generateCodeChallenge(verifier) {
+        /*
+         * 3. Verify the OAuth state.
+         *
+         * The login page must have stored oauth_state
+         * before redirecting the user to Deriv.
+         */
+        const savedState = sessionStorage.getItem("oauth_state");
 
-            const data = new TextEncoder().encode(verifier);
+        if (!savedState) {
+            status.className = "error";
 
-            const digest = await crypto.subtle.digest(
-                "SHA-256",
-                data
-            );
+            status.innerHTML =
+                "<strong>Authentication state is missing.</strong><br><br>" +
+                "Please start the login process again.";
 
-            return btoa(
-                String.fromCharCode(...new Uint8Array(digest))
-            )
-            .replace(/\+/g, "-")
-            .replace(/\//g, "_")
-            .replace(/=+$/, "");
+            homeButton.style.display = "inline-block";
+            return;
         }
-    </script>
+
+        if (!returnedState || returnedState !== savedState) {
+            status.className = "error";
+
+            status.innerHTML =
+                "<strong>Authentication state verification failed.</strong><br><br>" +
+                "Please start the login process again.";
+
+            sessionStorage.removeItem("oauth_state");
+            sessionStorage.removeItem("pkce_code_verifier");
+
+            homeButton.style.display = "inline-block";
+            return;
+        }
+
+        /*
+         * 4. The OAuth authorization code is valid.
+         *
+         * IMPORTANT:
+         * Do NOT exchange the code for an access token here.
+         * Deriv requires the token exchange to happen on your backend.
+         *
+         * We temporarily save the code so your backend can receive it
+         * through your own application flow.
+         */
+        sessionStorage.removeItem("oauth_state");
+
+        /*
+         * IMPORTANT SECURITY NOTE:
+         *
+         * The authorization code is intentionally NOT displayed
+         * on the page.
+         */
+
+        status.className = "success";
+
+        status.innerHTML =
+            "<strong>Deriv authentication successful.</strong><br><br>" +
+            "Authorization was received successfully.<br>" +
+            "Your application can now complete the secure server-side token exchange.";
+
+        homeButton.style.display = "inline-block";
+
+        /*
+         * Optional automatic return to the home page.
+         *
+         * Disabled by default so you can see the successful
+         * authentication message while testing.
+         *
+         * To enable it, remove the comments around this block.
+         */
+
+        /*
+        setTimeout(function () {
+            window.location.href =
+                "https://deriv-gorge.github.io/deriv-trading-site/";
+        }, 2000);
+        */
+
+    })();
+
+    /*
+     * Safely display values returned in the URL.
+     */
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+</script>
 
 </body>
 </html>
+```
