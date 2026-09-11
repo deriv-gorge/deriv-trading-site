@@ -1,41 +1,72 @@
 ```html
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Deriv Login Callback</title>
+    <title>Deriv Trader</title>
 
     <style>
-        body {
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
+        * {
+            box-sizing: border-box;
         }
 
-        .box {
-            width: 90%;
-            max-width: 500px;
-            padding: 30px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+        }
+
+        header {
+            background: #ff444f;
+            color: white;
+            padding: 20px;
             text-align: center;
         }
 
-        h1 {
-            margin-top: 0;
+        main {
+            max-width: 700px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 35px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.10);
+        }
+
+        #loginScreen,
+        #dashboard {
+            display: none;
         }
 
         #status {
+            font-size: 18px;
             margin: 20px 0;
-            line-height: 1.6;
-            word-break: break-word;
+        }
+
+        button {
+            padding: 14px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 8px;
+        }
+
+        #loginBtn {
+            background: #ff444f;
+            color: white;
+        }
+
+        #logoutBtn {
+            background: #222;
+            color: white;
         }
 
         .success {
@@ -46,172 +77,288 @@
             color: red;
         }
 
-        .info {
-            color: #333;
-        }
-
-        a {
-            display: inline-block;
-            margin-top: 15px;
-            padding: 12px 20px;
-            background: #ff444f;
-            color: white;
-            text-decoration: none;
-            border-radius: 6px;
+        .loading {
+            color: #555;
         }
     </style>
 </head>
 
 <body>
 
-<div class="box">
-    <h1>Deriv Authentication</h1>
+<header>
+    <h1>Deriv Trader</h1>
+</header>
 
-    <div id="status" class="info">
-        Processing your login...
+<main>
+
+    <div class="card">
+
+        <!-- Checking screen -->
+        <div id="checkingScreen">
+            <h2>Checking account...</h2>
+
+            <p id="checkingText">
+                Please wait.
+            </p>
+        </div>
+
+
+        <!-- Login screen -->
+        <div id="loginScreen">
+
+            <h2>Welcome</h2>
+
+            <p id="status" class="error">
+                You are not connected to Deriv.
+            </p>
+
+            <button id="loginBtn">
+                Login with Deriv
+            </button>
+
+        </div>
+
+
+        <!-- Dashboard -->
+        <div id="dashboard">
+
+            <h2>✓ Account Connected</h2>
+
+            <p id="accountStatus" class="success">
+                Your Deriv session is active.
+            </p>
+
+            <button id="logoutBtn">
+                Logout
+            </button>
+
+        </div>
+
     </div>
 
-    <a id="homeButton"
-       href="https://deriv-gorge.github.io/deriv-trading-site/"
-       style="display:none;">
-        Return to Home
-    </a>
-</div>
+</main>
+
 
 <script>
-    (function () {
-
-        const status = document.getElementById("status");
-        const homeButton = document.getElementById("homeButton");
-
-        const params = new URLSearchParams(window.location.search);
-
-        const code = params.get("code");
-        const returnedState = params.get("state");
-        const error = params.get("error");
-        const errorDescription = params.get("error_description");
-
-        /*
-         * 1. Check whether Deriv returned an OAuth error.
-         */
-        if (error) {
-            status.className = "error";
-
-            status.innerHTML =
-                "<strong>Login was not completed.</strong><br><br>" +
-                "Error: " + escapeHtml(error) +
-                (errorDescription
-                    ? "<br>" + escapeHtml(errorDescription)
-                    : "");
-
-            homeButton.style.display = "inline-block";
-            return;
-        }
-
-        /*
-         * 2. Make sure an authorization code was returned.
-         */
-        if (!code) {
-            status.className = "error";
-
-            status.innerHTML =
-                "<strong>No authorization code was received.</strong><br><br>" +
-                "Please return to the home page and try again.";
-
-            homeButton.style.display = "inline-block";
-            return;
-        }
-
-        /*
-         * 3. Verify the OAuth state.
-         *
-         * The login page must have stored oauth_state
-         * before redirecting the user to Deriv.
-         */
-        const savedState = sessionStorage.getItem("oauth_state");
-
-        if (!savedState) {
-            status.className = "error";
-
-            status.innerHTML =
-                "<strong>Authentication state is missing.</strong><br><br>" +
-                "Please start the login process again.";
-
-            homeButton.style.display = "inline-block";
-            return;
-        }
-
-        if (!returnedState || returnedState !== savedState) {
-            status.className = "error";
-
-            status.innerHTML =
-                "<strong>Authentication state verification failed.</strong><br><br>" +
-                "Please start the login process again.";
-
-            sessionStorage.removeItem("oauth_state");
-            sessionStorage.removeItem("pkce_code_verifier");
-
-            homeButton.style.display = "inline-block";
-            return;
-        }
-
-        /*
-         * 4. The OAuth authorization code is valid.
-         *
-         * IMPORTANT:
-         * Do NOT exchange the code for an access token here.
-         * Deriv requires the token exchange to happen on your backend.
-         *
-         * We temporarily save the code so your backend can receive it
-         * through your own application flow.
-         */
-        sessionStorage.removeItem("oauth_state");
-
-        /*
-         * IMPORTANT SECURITY NOTE:
-         *
-         * The authorization code is intentionally NOT displayed
-         * on the page.
-         */
-
-        status.className = "success";
-
-        status.innerHTML =
-            "<strong>Deriv authentication successful.</strong><br><br>" +
-            "Authorization was received successfully.<br>" +
-            "Your application can now complete the secure server-side token exchange.";
-
-        homeButton.style.display = "inline-block";
-
-        /*
-         * Optional automatic return to the home page.
-         *
-         * Disabled by default so you can see the successful
-         * authentication message while testing.
-         *
-         * To enable it, remove the comments around this block.
-         */
-
-        /*
-        setTimeout(function () {
-            window.location.href =
-                "https://deriv-gorge.github.io/deriv-trading-site/";
-        }, 2000);
-        */
-
-    })();
 
     /*
-     * Safely display values returned in the URL.
-     */
-    function escapeHtml(value) {
-        return String(value)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+    ============================================
+    DERIV SETTINGS
+    ============================================
+    */
+
+    const APP_ID = "34mQW3hmK3j2yzNHV4LdA";
+
+    const CALLBACK_URL =
+        "https://deriv-gorge.github.io/deriv-trading-site/callback.html";
+
+
+    /*
+    ============================================
+    PAGE ELEMENTS
+    ============================================
+    */
+
+    const checkingScreen =
+        document.getElementById("checkingScreen");
+
+    const checkingText =
+        document.getElementById("checkingText");
+
+    const loginScreen =
+        document.getElementById("loginScreen");
+
+    const dashboard =
+        document.getElementById("dashboard");
+
+    const loginBtn =
+        document.getElementById("loginBtn");
+
+    const logoutBtn =
+        document.getElementById("logoutBtn");
+
+
+    /*
+    ============================================
+    GET TOKEN
+    ============================================
+    */
+
+    function getToken() {
+
+        const token =
+            localStorage.getItem("deriv_access_token");
+
+        if (token && token.trim() !== "") {
+            return token;
+        }
+
+        const sessionToken =
+            sessionStorage.getItem("deriv_access_token");
+
+        if (sessionToken && sessionToken.trim() !== "") {
+            return sessionToken;
+        }
+
+        return null;
     }
+
+
+    /*
+    ============================================
+    CHECK WHETHER TOKEN EXISTS
+    ============================================
+    */
+
+    function checkToken() {
+
+        const token = getToken();
+
+        /*
+        Hide checking screen
+        */
+
+        checkingScreen.style.display = "none";
+
+
+        /*
+        TOKEN FOUND
+        */
+
+        if (token) {
+
+            dashboard.style.display = "block";
+
+            loginScreen.style.display = "none";
+
+            console.log("Deriv token found.");
+
+            return;
+        }
+
+
+        /*
+        NO TOKEN
+        */
+
+        loginScreen.style.display = "block";
+
+        dashboard.style.display = "none";
+
+        console.log("No Deriv token found.");
+
+    }
+
+
+    /*
+    ============================================
+    LOGIN
+    ============================================
+    */
+
+    loginBtn.addEventListener("click", function () {
+
+        /*
+        Create a secure random state
+        */
+
+        const state =
+            crypto.randomUUID();
+
+        /*
+        Save state so callback.html
+        can verify it.
+        */
+
+        sessionStorage.setItem(
+            "oauth_state",
+            state
+        );
+
+
+        /*
+        Build Deriv OAuth URL
+        */
+
+        const loginURL =
+            "https://oauth.deriv.com/oauth2/authorize" +
+            "?app_id=" +
+            encodeURIComponent(APP_ID) +
+            "&redirect_uri=" +
+            encodeURIComponent(CALLBACK_URL) +
+            "&state=" +
+            encodeURIComponent(state);
+
+
+        /*
+        Send user to Deriv
+        */
+
+        window.location.href = loginURL;
+
+    });
+
+
+    /*
+    ============================================
+    LOGOUT
+    ============================================
+    */
+
+    logoutBtn.addEventListener("click", function () {
+
+        /*
+        Delete token
+        */
+
+        localStorage.removeItem(
+            "deriv_access_token"
+        );
+
+        sessionStorage.removeItem(
+            "deriv_access_token"
+        );
+
+
+        /*
+        Delete OAuth state
+        */
+
+        sessionStorage.removeItem(
+            "oauth_state"
+        );
+
+        sessionStorage.removeItem(
+            "pkce_code_verifier"
+        );
+
+
+        /*
+        Return to login screen
+        */
+
+        dashboard.style.display = "none";
+
+        loginScreen.style.display = "block";
+
+    });
+
+
+    /*
+    ============================================
+    RUN TOKEN CHECK WHEN PAGE LOADS
+    ============================================
+    */
+
+    window.addEventListener(
+        "DOMContentLoaded",
+        function () {
+
+            checkToken();
+
+        }
+    );
+
 </script>
 
 </body>
