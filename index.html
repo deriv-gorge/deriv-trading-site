@@ -15,14 +15,14 @@
         body {
             margin: 0;
             font-family: Arial, sans-serif;
-            background: #f5f5f5;
+            background: #f4f5f7;
         }
 
         header {
             background: #ff444f;
             color: white;
-            padding: 20px;
             text-align: center;
+            padding: 20px;
         }
 
         .container {
@@ -33,8 +33,8 @@
 
         .card {
             background: white;
-            padding: 40px 25px;
             border-radius: 15px;
+            padding: 40px 25px;
             text-align: center;
             box-shadow: 0 5px 20px rgba(0,0,0,0.10);
         }
@@ -45,13 +45,13 @@
 
         p {
             color: #666;
-            line-height: 1.5;
+            line-height: 1.6;
         }
 
         button {
-            padding: 14px 28px;
-            border: 0;
+            border: none;
             border-radius: 8px;
+            padding: 14px 28px;
             font-size: 16px;
             cursor: pointer;
             margin-top: 20px;
@@ -71,12 +71,9 @@
             display: none;
         }
 
-        #loginPage {
-            display: none;
-        }
-
         #message {
             margin-top: 20px;
+            color: #666;
         }
     </style>
 </head>
@@ -89,7 +86,6 @@
 
 <div class="container">
 
-    <!-- LOGIN PAGE -->
     <div id="loginPage" class="card">
 
         <h1>Welcome</h1>
@@ -107,7 +103,6 @@
     </div>
 
 
-    <!-- DASHBOARD -->
     <div id="dashboard" class="card">
 
         <h1>Deriv Trader</h1>
@@ -116,8 +111,8 @@
             You are logged in.
         </p>
 
-        <p id="loginStatus">
-            Login session detected.
+        <p>
+            Your saved login session was detected.
         </p>
 
         <button id="logoutButton" onclick="logout()">
@@ -131,63 +126,146 @@
 
 <script>
 
-    /* ==========================================
-       YOUR DERIV DETAILS
-       ========================================== */
+const CLIENT_ID = "34mQW3hmK3j2yzNHV4LdA";
 
-    const CLIENT_ID = "34mQW3hmK3j2yzNHV4LdA";
+const REDIRECT_URI =
+    "https://deriv-gorge.github.io/deriv-trading-site/callback.html";
 
-    const CALLBACK_URL =
-        "https://deriv-gorge.github.io/deriv-trading-site/callback.html";
+const AUTH_URL =
+    "https://auth.deriv.com/oauth2/auth";
+
+const TOKEN_KEY =
+    "deriv_access_token";
+
+const VERIFIER_KEY =
+    "deriv_code_verifier";
+
+const STATE_KEY =
+    "deriv_oauth_state";
 
 
-    /* ==========================================
-       STORAGE
-       ========================================== */
+/* ==========================================
+   RANDOM STRING
+   ========================================== */
 
-    const TOKEN_KEY = "deriv_access_token";
+function randomString(length) {
 
+    const characters =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
 
-    /* ==========================================
-       CHECK SAVED LOGIN
-       ========================================== */
+    const array =
+        new Uint8Array(length);
 
-    function checkLogin() {
+    crypto.getRandomValues(array);
 
-        const token = localStorage.getItem(TOKEN_KEY);
+    let result = "";
 
-        if (token && token.trim() !== "") {
+    for (let i = 0; i < array.length; i++) {
 
-            document.getElementById("loginPage").style.display = "none";
-
-            document.getElementById("dashboard").style.display = "block";
-
-        } else {
-
-            document.getElementById("loginPage").style.display = "block";
-
-            document.getElementById("dashboard").style.display = "none";
-
-        }
+        result +=
+            characters[array[i] % characters.length];
 
     }
 
+    return result;
+}
 
-    /* ==========================================
-       LOGIN
-       ========================================== */
 
-    function login() {
+/* ==========================================
+   CREATE PKCE CHALLENGE
+   ========================================== */
 
-        const message =
-            document.getElementById("message");
+async function createChallenge(verifier) {
 
-        message.innerText =
-            "Opening Deriv login...";
+    const data =
+        new TextEncoder().encode(verifier);
 
+    const hash =
+        await crypto.subtle.digest(
+            "SHA-256",
+            data
+        );
+
+    let binary = "";
+
+    const bytes =
+        new Uint8Array(hash);
+
+    for (const byte of bytes) {
+
+        binary +=
+            String.fromCharCode(byte);
+
+    }
+
+    return btoa(binary)
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+}
+
+
+/* ==========================================
+   LOGIN
+   ========================================== */
+
+async function login() {
+
+    const button =
+        document.getElementById("loginButton");
+
+    const message =
+        document.getElementById("message");
+
+    button.disabled = true;
+
+    button.innerText =
+        "Connecting...";
+
+    message.innerText =
+        "Preparing secure Deriv login...";
+
+
+    try {
+
+        /* Create verifier */
+
+        const verifier =
+            randomString(64);
+
+
+        /* Create state */
+
+        const state =
+            randomString(32);
+
+
+        /* Create challenge */
+
+        const challenge =
+            await createChallenge(verifier);
+
+
+        /*
+         Store temporary OAuth information.
+         Deriv requires these for the callback.
+        */
+
+        sessionStorage.setItem(
+            VERIFIER_KEY,
+            verifier
+        );
+
+        sessionStorage.setItem(
+            STATE_KEY,
+            state
+        );
+
+
+        /* Build authorization URL */
 
         const url =
-            new URL("https://auth.deriv.com/oauth2/auth");
+            new URL(AUTH_URL);
 
 
         url.searchParams.set(
@@ -202,7 +280,7 @@
 
         url.searchParams.set(
             "redirect_uri",
-            CALLBACK_URL
+            REDIRECT_URI
         );
 
         url.searchParams.set(
@@ -210,38 +288,116 @@
             "trade"
         );
 
+        url.searchParams.set(
+            "state",
+            state
+        );
+
+        url.searchParams.set(
+            "code_challenge",
+            challenge
+        );
+
+        url.searchParams.set(
+            "code_challenge_method",
+            "S256"
+        );
+
+
+        /*
+         Redirect to Deriv.
+        */
 
         window.location.href =
             url.toString();
 
     }
 
+    catch (error) {
 
-    /* ==========================================
-       LOGOUT
-       ========================================== */
+        console.error(error);
 
-    function logout() {
+        button.disabled = false;
 
-        localStorage.removeItem(TOKEN_KEY);
+        button.innerText =
+            "Login with Deriv";
 
-        checkLogin();
+        message.innerText =
+            "Unable to start Deriv login.";
 
     }
 
+}
 
-    /* ==========================================
-       START
-       ========================================== */
 
-    window.addEventListener(
-        "DOMContentLoaded",
-        function() {
+/* ==========================================
+   CHECK SAVED LOGIN
+   ========================================== */
 
-            checkLogin();
+function checkLogin() {
 
-        }
+    const token =
+        localStorage.getItem(TOKEN_KEY);
+
+
+    if (token) {
+
+        document.getElementById(
+            "loginPage"
+        ).style.display = "none";
+
+        document.getElementById(
+            "dashboard"
+        ).style.display = "block";
+
+    }
+
+    else {
+
+        document.getElementById(
+            "loginPage"
+        ).style.display = "block";
+
+        document.getElementById(
+            "dashboard"
+        ).style.display = "none";
+
+    }
+
+}
+
+
+/* ==========================================
+   LOGOUT
+   ========================================== */
+
+function logout() {
+
+    localStorage.removeItem(
+        TOKEN_KEY
     );
+
+    sessionStorage.removeItem(
+        VERIFIER_KEY
+    );
+
+    sessionStorage.removeItem(
+        STATE_KEY
+    );
+
+    checkLogin();
+
+}
+
+
+/* ==========================================
+   LOAD PAGE
+   ========================================== */
+
+window.addEventListener(
+    "DOMContentLoaded",
+    checkLogin
+);
 
 </script>
 
