@@ -12,8 +12,24 @@
     <h1>DERIV TRADER</h1>
 
     <p>Welcome to my Deriv third-party trading site.</p>
+<button onclick="connectDeriv()">Connect Deriv</button>
 
-    <button>Connect Deriv</button>
+<script>
+function connectDeriv() {
+    const clientId = "YOUR_APP_ID";
+    const redirectUri = "YOUR_REDIRECT_URL";
+
+    const oauthUrl =
+        "https://auth.deriv.com/oauth2/auth" +
+        "?response_type=code" +
+        "&client_id=" + encodeURIComponent(clientId) +
+        "&redirect_uri=" + encodeURIComponent(redirectUri) +
+        "&scope=trade";
+
+    window.location.href = oauthUrl;
+}
+</script>
+    
 
 </body>
 </html>
