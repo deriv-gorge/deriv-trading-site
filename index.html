@@ -1,113 +1,254 @@
-```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deriv Trader</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            color: #222;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 80px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #666;
+        }
+
+        button {
+            padding: 14px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+
+        .login {
+            background: #ff444f;
+            color: white;
+        }
+
+        .logout {
+            background: #333;
+            color: white;
+        }
+
+        #dashboard {
+            display: none;
+        }
+
+        #loginPage {
+            display: none;
+        }
+
+        #status {
+            margin: 20px 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- LOGIN PAGE -->
+    <div id="loginPage">
+
+        <h1>Deriv Trader</h1>
+
+        <p>Connect your Deriv account to continue.</p>
+
+        <div id="status">Checking login...</div>
+
+        <button class="login" onclick="login()">
+            Login with Deriv
+        </button>
+
+    </div>
+
+
+    <!-- DASHBOARD -->
+    <div id="dashboard">
+
+        <h1>Welcome to Deriv Trader</h1>
+
+        <p>You are logged in.</p>
+
+        <p id="tokenStatus"></p>
+
+        <button class="logout" onclick="logout()">
+            Logout
+        </button>
+
+    </div>
+
+</div>
+
+
 <script>
-    /*
-     * ==========================================
-     * TOKEN STORAGE
-     * ==========================================
-     *
-     * localStorage survives:
-     * - page refresh
-     * - closing the tab
-     * - closing the browser
-     *
-     * It remains until your code removes it.
-     */
+
+    // =========================================
+    // DERIV SETTINGS
+    // =========================================
+
+    const APP_ID = "34mQW3hmK3j2yzNHV4LdA";
+
+    const CALLBACK_URL =
+        "https://deriv-gorge.github.io/deriv-trading-site/callback.html";
+
+
+    // =========================================
+    // TOKEN STORAGE
+    // =========================================
 
     const TOKEN_KEY = "deriv_access_token";
 
 
-    /*
-     * SAVE TOKEN
-     */
+    // =========================================
+    // GET SAVED TOKEN
+    // =========================================
+
+    function getToken() {
+
+        return localStorage.getItem(TOKEN_KEY);
+
+    }
+
+
+    // =========================================
+    // SAVE TOKEN
+    // =========================================
+
     function saveToken(token) {
 
-        if (!token || token.trim() === "") {
-            console.error("No valid token received.");
+        if (!token) {
             return false;
         }
 
         localStorage.setItem(TOKEN_KEY, token);
 
-        console.log("Deriv token saved permanently.");
-
         return true;
+
     }
 
 
-    /*
-     * GET TOKEN
-     */
-    function getToken() {
-
-        const token = localStorage.getItem(TOKEN_KEY);
-
-        if (token && token.trim() !== "") {
-            return token;
-        }
-
-        return null;
-    }
-
-
-    /*
-     * CHECK LOGIN
-     */
-    function checkToken() {
-
-        const token = getToken();
-
-        if (token) {
-
-            console.log("Token found.");
-
-            document.getElementById("loginScreen").style.display =
-                "none";
-
-            document.getElementById("dashboard").style.display =
-                "block";
-
-        } else {
-
-            console.log("No token found.");
-
-            document.getElementById("loginScreen").style.display =
-                "block";
-
-            document.getElementById("dashboard").style.display =
-                "none";
-        }
-    }
-
-
-    /*
-     * ==========================================
-     * LOGOUT
-     * ==========================================
-     *
-     * The token is removed ONLY when the user
-     * chooses Logout.
-     */
+    // =========================================
+    // REMOVE TOKEN
+    // =========================================
 
     function logout() {
 
         localStorage.removeItem(TOKEN_KEY);
 
-        console.log("Deriv account logged out.");
+        showLogin();
 
-        checkToken();
     }
 
 
-    /*
-     * ==========================================
-     * CHECK WHEN PAGE OPENS
-     * ==========================================
-     */
+    // =========================================
+    // SHOW LOGIN
+    // =========================================
 
-    window.addEventListener("DOMContentLoaded", function () {
+    function showLogin() {
 
-        checkToken();
+        document.getElementById("loginPage").style.display = "block";
+
+        document.getElementById("dashboard").style.display = "none";
+
+        document.getElementById("status").innerText =
+            "Please login with Deriv.";
+
+    }
+
+
+    // =========================================
+    // SHOW DASHBOARD
+    // =========================================
+
+    function showDashboard(token) {
+
+        document.getElementById("loginPage").style.display = "none";
+
+        document.getElementById("dashboard").style.display = "block";
+
+        document.getElementById("tokenStatus").innerText =
+            "Deriv login is saved on this browser.";
+
+    }
+
+
+    // =========================================
+    // CHECK LOGIN
+    // =========================================
+
+    function checkLogin() {
+
+        const token = getToken();
+
+        if (token) {
+
+            showDashboard(token);
+
+        } else {
+
+            showLogin();
+
+        }
+
+    }
+
+
+    // =========================================
+    // LOGIN
+    // =========================================
+
+    function login() {
+
+        /*
+         IMPORTANT:
+         Do not put a Deriv client secret in this file.
+        */
+
+        const authURL =
+            "https://auth.deriv.com/oauth2/auth" +
+            "?response_type=code" +
+            "&client_id=" + encodeURIComponent(APP_ID) +
+            "&redirect_uri=" + encodeURIComponent(CALLBACK_URL);
+
+        window.location.href = authURL;
+
+    }
+
+
+    // =========================================
+    // START
+    // =========================================
+
+    document.addEventListener("DOMContentLoaded", function() {
+
+        checkLogin();
 
     });
+
 </script>
-```
+
+</body>
+</html>
