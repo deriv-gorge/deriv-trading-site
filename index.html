@@ -1,203 +1,48 @@
 ```html
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Deriv Trader</title>
-
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f4f4;
-        }
-
-        header {
-            background: #ff444f;
-            color: white;
-            padding: 20px;
-            text-align: center;
-        }
-
-        main {
-            max-width: 700px;
-            margin: 50px auto;
-            padding: 20px;
-        }
-
-        .card {
-            background: white;
-            padding: 35px;
-            border-radius: 15px;
-            text-align: center;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.10);
-        }
-
-        #loginScreen,
-        #dashboard {
-            display: none;
-        }
-
-        #status {
-            font-size: 18px;
-            margin: 20px 0;
-        }
-
-        button {
-            padding: 14px 25px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            margin: 8px;
-        }
-
-        #loginBtn {
-            background: #ff444f;
-            color: white;
-        }
-
-        #logoutBtn {
-            background: #222;
-            color: white;
-        }
-
-        .success {
-            color: green;
-        }
-
-        .error {
-            color: red;
-        }
-
-        .loading {
-            color: #555;
-        }
-    </style>
-</head>
-
-<body>
-
-<header>
-    <h1>Deriv Trader</h1>
-</header>
-
-<main>
-
-    <div class="card">
-
-        <!-- Checking screen -->
-        <div id="checkingScreen">
-            <h2>Checking account...</h2>
-
-            <p id="checkingText">
-                Please wait.
-            </p>
-        </div>
-
-
-        <!-- Login screen -->
-        <div id="loginScreen">
-
-            <h2>Welcome</h2>
-
-            <p id="status" class="error">
-                You are not connected to Deriv.
-            </p>
-
-            <button id="loginBtn">
-                Login with Deriv
-            </button>
-
-        </div>
-
-
-        <!-- Dashboard -->
-        <div id="dashboard">
-
-            <h2>✓ Account Connected</h2>
-
-            <p id="accountStatus" class="success">
-                Your Deriv session is active.
-            </p>
-
-            <button id="logoutBtn">
-                Logout
-            </button>
-
-        </div>
-
-    </div>
-
-</main>
-
-
 <script>
-
     /*
-    ============================================
-    DERIV SETTINGS
-    ============================================
-    */
+     * ==========================================
+     * TOKEN STORAGE
+     * ==========================================
+     *
+     * localStorage survives:
+     * - page refresh
+     * - closing the tab
+     * - closing the browser
+     *
+     * It remains until your code removes it.
+     */
 
-    const APP_ID = "34mQW3hmK3j2yzNHV4LdA";
-
-    const CALLBACK_URL =
-        "https://deriv-gorge.github.io/deriv-trading-site/callback.html";
-
-
-    /*
-    ============================================
-    PAGE ELEMENTS
-    ============================================
-    */
-
-    const checkingScreen =
-        document.getElementById("checkingScreen");
-
-    const checkingText =
-        document.getElementById("checkingText");
-
-    const loginScreen =
-        document.getElementById("loginScreen");
-
-    const dashboard =
-        document.getElementById("dashboard");
-
-    const loginBtn =
-        document.getElementById("loginBtn");
-
-    const logoutBtn =
-        document.getElementById("logoutBtn");
+    const TOKEN_KEY = "deriv_access_token";
 
 
     /*
-    ============================================
-    GET TOKEN
-    ============================================
-    */
+     * SAVE TOKEN
+     */
+    function saveToken(token) {
 
+        if (!token || token.trim() === "") {
+            console.error("No valid token received.");
+            return false;
+        }
+
+        localStorage.setItem(TOKEN_KEY, token);
+
+        console.log("Deriv token saved permanently.");
+
+        return true;
+    }
+
+
+    /*
+     * GET TOKEN
+     */
     function getToken() {
 
-        const token =
-            localStorage.getItem("deriv_access_token");
+        const token = localStorage.getItem(TOKEN_KEY);
 
         if (token && token.trim() !== "") {
             return token;
-        }
-
-        const sessionToken =
-            sessionStorage.getItem("deriv_access_token");
-
-        if (sessionToken && sessionToken.trim() !== "") {
-            return sessionToken;
         }
 
         return null;
@@ -205,162 +50,64 @@
 
 
     /*
-    ============================================
-    CHECK WHETHER TOKEN EXISTS
-    ============================================
-    */
-
+     * CHECK LOGIN
+     */
     function checkToken() {
 
         const token = getToken();
 
-        /*
-        Hide checking screen
-        */
-
-        checkingScreen.style.display = "none";
-
-
-        /*
-        TOKEN FOUND
-        */
-
         if (token) {
 
-            dashboard.style.display = "block";
+            console.log("Token found.");
 
-            loginScreen.style.display = "none";
+            document.getElementById("loginScreen").style.display =
+                "none";
 
-            console.log("Deriv token found.");
+            document.getElementById("dashboard").style.display =
+                "block";
 
-            return;
+        } else {
+
+            console.log("No token found.");
+
+            document.getElementById("loginScreen").style.display =
+                "block";
+
+            document.getElementById("dashboard").style.display =
+                "none";
         }
-
-
-        /*
-        NO TOKEN
-        */
-
-        loginScreen.style.display = "block";
-
-        dashboard.style.display = "none";
-
-        console.log("No Deriv token found.");
-
     }
 
 
     /*
-    ============================================
-    LOGIN
-    ============================================
-    */
+     * ==========================================
+     * LOGOUT
+     * ==========================================
+     *
+     * The token is removed ONLY when the user
+     * chooses Logout.
+     */
 
-    loginBtn.addEventListener("click", function () {
+    function logout() {
 
-        /*
-        Create a secure random state
-        */
+        localStorage.removeItem(TOKEN_KEY);
 
-        const state =
-            crypto.randomUUID();
+        console.log("Deriv account logged out.");
 
-        /*
-        Save state so callback.html
-        can verify it.
-        */
-
-        sessionStorage.setItem(
-            "oauth_state",
-            state
-        );
-
-
-        /*
-        Build Deriv OAuth URL
-        */
-
-        const loginURL =
-            "https://oauth.deriv.com/oauth2/authorize" +
-            "?app_id=" +
-            encodeURIComponent(APP_ID) +
-            "&redirect_uri=" +
-            encodeURIComponent(CALLBACK_URL) +
-            "&state=" +
-            encodeURIComponent(state);
-
-
-        /*
-        Send user to Deriv
-        */
-
-        window.location.href = loginURL;
-
-    });
+        checkToken();
+    }
 
 
     /*
-    ============================================
-    LOGOUT
-    ============================================
-    */
+     * ==========================================
+     * CHECK WHEN PAGE OPENS
+     * ==========================================
+     */
 
-    logoutBtn.addEventListener("click", function () {
+    window.addEventListener("DOMContentLoaded", function () {
 
-        /*
-        Delete token
-        */
-
-        localStorage.removeItem(
-            "deriv_access_token"
-        );
-
-        sessionStorage.removeItem(
-            "deriv_access_token"
-        );
-
-
-        /*
-        Delete OAuth state
-        */
-
-        sessionStorage.removeItem(
-            "oauth_state"
-        );
-
-        sessionStorage.removeItem(
-            "pkce_code_verifier"
-        );
-
-
-        /*
-        Return to login screen
-        */
-
-        dashboard.style.display = "none";
-
-        loginScreen.style.display = "block";
+        checkToken();
 
     });
-
-
-    /*
-    ============================================
-    RUN TOKEN CHECK WHEN PAGE LOADS
-    ============================================
-    */
-
-    window.addEventListener(
-        "DOMContentLoaded",
-        function () {
-
-            checkToken();
-
-        }
-    );
-
 </script>
-
-</body>
-</html>
 ```
