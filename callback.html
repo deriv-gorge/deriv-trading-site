@@ -1,16 +1,102 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deriv Callback</title>
+    <title>Deriv Login Callback</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .box {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        h1 {
+            color: #e11d48;
+        }
+
+        p {
+            color: #444;
+            line-height: 1.6;
+        }
+
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
 </head>
 
 <body>
 
-    <h1>Deriv Authorization</h1>
+<div class="box">
+    <h1>Deriv Trading Site</h1>
 
-    <p>Processing your Deriv connection...</p>
+    <p id="message">Processing Deriv login...</p>
+</div>
+
+<script>
+    // Read the URL parameters returned by Deriv
+    const params = new URLSearchParams(window.location.search);
+
+    const code = params.get("code");
+    const error = params.get("error");
+    const errorDescription = params.get("error_description");
+
+    const message = document.getElementById("message");
+
+    // If Deriv returned an error
+    if (error) {
+        message.innerHTML =
+            '<span class="error">Login failed.</span><br><br>' +
+            (errorDescription || error);
+    }
+
+    // If an authorization code was returned
+    else if (code) {
+
+        // Save the authorization code temporarily
+        sessionStorage.setItem("deriv_auth_code", code);
+
+        message.innerHTML =
+            '<span class="success">Login successful!</span><br><br>' +
+            'Authorization received. Returning to your trading dashboard...';
+
+        // Return to the main website
+        setTimeout(function () {
+            window.location.href =
+                "https://deriv-gorge.github.io/deriv-trading-site/";
+        }, 1500);
+    }
+
+    // Nothing was returned
+    else {
+        message.innerHTML =
+            '<span class="error">No authorization code was received.</span>';
+    }
+</script>
 
 </body>
-</html>commit changes right?
+</html>
+```
