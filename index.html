@@ -16,10 +16,9 @@
             margin: 0;
             font-family: Arial, sans-serif;
             background: #f5f5f5;
-            min-height: 100vh;
         }
 
-        .header {
+        header {
             background: #ff444f;
             color: white;
             padding: 20px;
@@ -27,15 +26,15 @@
         }
 
         .container {
-            max-width: 700px;
+            max-width: 600px;
             margin: 60px auto;
             padding: 20px;
         }
 
         .card {
             background: white;
+            padding: 40px 25px;
             border-radius: 15px;
-            padding: 35px;
             text-align: center;
             box-shadow: 0 5px 20px rgba(0,0,0,0.10);
         }
@@ -44,51 +43,39 @@
             margin-top: 0;
         }
 
-        .description {
+        p {
             color: #666;
-            line-height: 1.6;
+            line-height: 1.5;
         }
 
         button {
-            border: none;
+            padding: 14px 28px;
+            border: 0;
             border-radius: 8px;
-            padding: 14px 25px;
             font-size: 16px;
             cursor: pointer;
             margin-top: 20px;
         }
 
-        .login-button {
+        #loginButton {
             background: #ff444f;
             color: white;
         }
 
-        .login-button:hover {
-            opacity: 0.9;
-        }
-
-        .logout-button {
+        #logoutButton {
             background: #333;
             color: white;
         }
 
-        .dashboard {
+        #dashboard {
             display: none;
         }
 
-        .login {
+        #loginPage {
             display: none;
         }
 
         #message {
-            margin-top: 20px;
-            color: #666;
-        }
-
-        .status {
-            padding: 15px;
-            background: #f1f1f1;
-            border-radius: 8px;
             margin-top: 20px;
         }
     </style>
@@ -96,397 +83,164 @@
 
 <body>
 
-    <div class="header">
-        <h2>Deriv Trader</h2>
-    </div>
+<header>
+    <h2>Deriv Trader</h2>
+</header>
 
-    <div class="container">
+<div class="container">
 
-        <!-- LOGIN -->
-        <div id="loginPage" class="card login">
+    <!-- LOGIN PAGE -->
+    <div id="loginPage" class="card">
 
-            <h1>Welcome</h1>
+        <h1>Welcome</h1>
 
-            <p class="description">
-                Connect your Deriv account to continue.
-            </p>
+        <p>
+            Connect your Deriv account to continue.
+        </p>
 
-            <button
-                id="loginButton"
-                class="login-button"
-                onclick="startLogin()">
-                Login with Deriv
-            </button>
+        <button id="loginButton" onclick="login()">
+            Login with Deriv
+        </button>
 
-            <div id="message"></div>
-
-        </div>
-
-
-        <!-- DASHBOARD -->
-        <div id="dashboard" class="card dashboard">
-
-            <h1>Welcome to Deriv Trader</h1>
-
-            <p class="description">
-                Your login session has been detected.
-            </p>
-
-            <div class="status">
-                <strong>Login status:</strong>
-                Connected
-            </div>
-
-            <button
-                class="logout-button"
-                onclick="logout()">
-                Logout
-            </button>
-
-        </div>
+        <div id="message"></div>
 
     </div>
+
+
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="card">
+
+        <h1>Deriv Trader</h1>
+
+        <p>
+            You are logged in.
+        </p>
+
+        <p id="loginStatus">
+            Login session detected.
+        </p>
+
+        <button id="logoutButton" onclick="logout()">
+            Logout
+        </button>
+
+    </div>
+
+</div>
 
 
 <script>
 
-    /* =====================================================
-       DERIV CONFIGURATION
-       ===================================================== */
+    /* ==========================================
+       YOUR DERIV DETAILS
+       ========================================== */
 
     const CLIENT_ID = "34mQW3hmK3j2yzNHV4LdA";
 
-    const REDIRECT_URI =
+    const CALLBACK_URL =
         "https://deriv-gorge.github.io/deriv-trading-site/callback.html";
 
-    const AUTHORIZATION_URL =
-        "https://auth.deriv.com/oauth2/auth";
 
-
-    /* =====================================================
-       STORAGE KEYS
-       ===================================================== */
+    /* ==========================================
+       STORAGE
+       ========================================== */
 
     const TOKEN_KEY = "deriv_access_token";
 
-    const VERIFIER_KEY = "deriv_code_verifier";
 
-    const STATE_KEY = "deriv_oauth_state";
+    /* ==========================================
+       CHECK SAVED LOGIN
+       ========================================== */
 
+    function checkLogin() {
 
-    /* =====================================================
-       CHECK IF TOKEN EXISTS
-       ===================================================== */
+        const token = localStorage.getItem(TOKEN_KEY);
 
-    function getToken() {
+        if (token && token.trim() !== "") {
 
-        return localStorage.getItem(TOKEN_KEY);
+            document.getElementById("loginPage").style.display = "none";
 
-    }
+            document.getElementById("dashboard").style.display = "block";
 
+        } else {
 
-    /* =====================================================
-       SHOW LOGIN PAGE
-       ===================================================== */
+            document.getElementById("loginPage").style.display = "block";
 
-    function showLogin() {
-
-        document.getElementById("loginPage").style.display = "block";
-
-        document.getElementById("dashboard").style.display = "none";
-
-    }
-
-
-    /* =====================================================
-       SHOW DASHBOARD
-       ===================================================== */
-
-    function showDashboard() {
-
-        document.getElementById("loginPage").style.display = "none";
-
-        document.getElementById("dashboard").style.display = "block";
-
-    }
-
-
-    /* =====================================================
-       RANDOM STRING
-       ===================================================== */
-
-    function randomString(length = 64) {
-
-        const characters =
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-
-        const array = new Uint8Array(length);
-
-        crypto.getRandomValues(array);
-
-        let result = "";
-
-        for (let i = 0; i < array.length; i++) {
-
-            result += characters[array[i] % characters.length];
+            document.getElementById("dashboard").style.display = "none";
 
         }
 
-        return result;
-
     }
 
 
-    /* =====================================================
-       BASE64URL
-       ===================================================== */
+    /* ==========================================
+       LOGIN
+       ========================================== */
 
-    function base64UrlEncode(buffer) {
-
-        let binary = "";
-
-        const bytes = new Uint8Array(buffer);
-
-        for (const byte of bytes) {
-
-            binary += String.fromCharCode(byte);
-
-        }
-
-        return btoa(binary)
-            .replace(/\+/g, "-")
-            .replace(/\//g, "_")
-            .replace(/=+$/, "");
-
-    }
-
-
-    /* =====================================================
-       CREATE PKCE CHALLENGE
-       ===================================================== */
-
-    async function createCodeChallenge(verifier) {
-
-        const data =
-            new TextEncoder().encode(verifier);
-
-        const digest =
-            await crypto.subtle.digest(
-                "SHA-256",
-                data
-            );
-
-        return base64UrlEncode(digest);
-
-    }
-
-
-    /* =====================================================
-       START DERIV LOGIN
-       ===================================================== */
-
-    async function startLogin() {
-
-        const button =
-            document.getElementById("loginButton");
+    function login() {
 
         const message =
             document.getElementById("message");
 
-        button.disabled = true;
-
-        button.innerText = "Connecting...";
-
         message.innerText =
-            "Preparing secure Deriv login...";
+            "Opening Deriv login...";
 
 
-        try {
-
-            /*
-             * Generate PKCE verifier.
-             */
-
-            const verifier =
-                randomString(64);
+        const url =
+            new URL("https://auth.deriv.com/oauth2/auth");
 
 
-            /*
-             * Generate state.
-             */
+        url.searchParams.set(
+            "response_type",
+            "code"
+        );
 
-            const state =
-                randomString(32);
+        url.searchParams.set(
+            "client_id",
+            CLIENT_ID
+        );
 
+        url.searchParams.set(
+            "redirect_uri",
+            CALLBACK_URL
+        );
 
-            /*
-             * Generate challenge.
-             */
-
-            const challenge =
-                await createCodeChallenge(verifier);
-
-
-            /*
-             * Save temporary OAuth values.
-             *
-             * These are intentionally stored in
-             * sessionStorage because they belong
-             * only to this login attempt.
-             */
-
-            sessionStorage.setItem(
-                VERIFIER_KEY,
-                verifier
-            );
-
-            sessionStorage.setItem(
-                STATE_KEY,
-                state
-            );
+        url.searchParams.set(
+            "scope",
+            "trade"
+        );
 
 
-            /*
-             * Build Deriv authorization URL.
-             */
-
-            const url =
-                new URL(AUTHORIZATION_URL);
-
-
-            url.searchParams.set(
-                "response_type",
-                "code"
-            );
-
-            url.searchParams.set(
-                "client_id",
-                CLIENT_ID
-            );
-
-            url.searchParams.set(
-                "redirect_uri",
-                REDIRECT_URI
-            );
-
-            url.searchParams.set(
-                "scope",
-                "trade"
-            );
-
-            url.searchParams.set(
-                "state",
-                state
-            );
-
-            url.searchParams.set(
-                "code_challenge",
-                challenge
-            );
-
-            url.searchParams.set(
-                "code_challenge_method",
-                "S256"
-            );
-
-
-            /*
-             * Redirect to Deriv.
-             */
-
-            window.location.href =
-                url.toString();
-
-        } catch (error) {
-
-            console.error(error);
-
-            button.disabled = false;
-
-            button.innerText =
-                "Login with Deriv";
-
-            message.innerText =
-                "Unable to start Deriv login.";
-
-        }
+        window.location.href =
+            url.toString();
 
     }
 
 
-    /* =====================================================
+    /* ==========================================
        LOGOUT
-       ===================================================== */
+       ========================================== */
 
     function logout() {
 
-        /*
-         * Remove the persistent login token.
-         */
-
         localStorage.removeItem(TOKEN_KEY);
 
-
-        /*
-         * Remove temporary OAuth data.
-         */
-
-        sessionStorage.removeItem(
-            VERIFIER_KEY
-        );
-
-        sessionStorage.removeItem(
-            STATE_KEY
-        );
-
-
-        /*
-         * Return to login page.
-         */
-
-        showLogin();
+        checkLogin();
 
     }
 
 
-    /* =====================================================
-       INITIAL CHECK
-       ===================================================== */
+    /* ==========================================
+       START
+       ========================================== */
 
-    function checkLogin() {
+    window.addEventListener(
+        "DOMContentLoaded",
+        function() {
 
-        const token =
-            getToken();
-
-
-        if (token) {
-
-            /*
-             * Token exists in localStorage.
-             */
-
-            showDashboard();
-
-        } else {
-
-            /*
-             * No token exists.
-             */
-
-            showLogin();
+            checkLogin();
 
         }
-
-    }
-
-
-    /* =====================================================
-       START
-       ===================================================== */
-
-    document.addEventListener(
-        "DOMContentLoaded",
-        checkLogin
     );
 
 </script>
