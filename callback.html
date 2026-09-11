@@ -4,46 +4,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Deriv Login Callback</title>
 
     <style>
         body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-family: Arial, sans-serif;
             background: #f5f5f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
         }
 
         .box {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            max-width: 500px;
             width: 90%;
+            max-width: 500px;
+            padding: 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
         }
 
         h1 {
-            color: #e11d48;
+            margin-top: 0;
         }
 
-        p {
-            color: #444;
+        #status {
+            margin: 20px 0;
             line-height: 1.6;
+            word-break: break-word;
         }
 
         .success {
             color: green;
-            font-weight: bold;
         }
 
         .error {
             color: red;
-            font-weight: bold;
+        }
+
+        .info {
+            color: #333;
+        }
+
+        a {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: #ff444f;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
         }
     </style>
 </head>
@@ -51,49 +65,152 @@
 <body>
 
 <div class="box">
-    <h1>Deriv Trading Site</h1>
+    <h1>Deriv Authentication</h1>
 
-    <p id="message">Processing Deriv login...</p>
+    <div id="status" class="info">
+        Processing your login...
+    </div>
+
+    <a id="homeButton"
+       href="https://deriv-gorge.github.io/deriv-trading-site/"
+       style="display:none;">
+        Return to Home
+    </a>
 </div>
 
 <script>
-    // Read the URL parameters returned by Deriv
-    const params = new URLSearchParams(window.location.search);
+    (function () {
 
-    const code = params.get("code");
-    const error = params.get("error");
-    const errorDescription = params.get("error_description");
+        const status = document.getElementById("status");
+        const homeButton = document.getElementById("homeButton");
 
-    const message = document.getElementById("message");
+        const params = new URLSearchParams(window.location.search);
 
-    // If Deriv returned an error
-    if (error) {
-        message.innerHTML =
-            '<span class="error">Login failed.</span><br><br>' +
-            (errorDescription || error);
-    }
+        const code = params.get("code");
+        const returnedState = params.get("state");
+        const error = params.get("error");
+        const errorDescription = params.get("error_description");
 
-    // If an authorization code was returned
-    else if (code) {
+        /*
+         * 1. Check whether Deriv returned an OAuth error.
+         */
+        if (error) {
+            status.className = "error";
 
-        // Save the authorization code temporarily
-        sessionStorage.setItem("deriv_auth_code", code);
+            status.innerHTML =
+                "<strong>Login was not completed.</strong><br><br>" +
+                "Error: " + escapeHtml(error) +
+                (errorDescription
+                    ? "<br>" + escapeHtml(errorDescription)
+                    : "");
 
-        message.innerHTML =
-            '<span class="success">Login successful!</span><br><br>' +
-            'Authorization received. Returning to your trading dashboard...';
+            homeButton.style.display = "inline-block";
+            return;
+        }
 
-        // Return to the main website
+        /*
+         * 2. Make sure an authorization code was returned.
+         */
+        if (!code) {
+            status.className = "error";
+
+            status.innerHTML =
+                "<strong>No authorization code was received.</strong><br><br>" +
+                "Please return to the home page and try again.";
+
+            homeButton.style.display = "inline-block";
+            return;
+        }
+
+        /*
+         * 3. Verify the OAuth state.
+         *
+         * The login page must have stored oauth_state
+         * before redirecting the user to Deriv.
+         */
+        const savedState = sessionStorage.getItem("oauth_state");
+
+        if (!savedState) {
+            status.className = "error";
+
+            status.innerHTML =
+                "<strong>Authentication state is missing.</strong><br><br>" +
+                "Please start the login process again.";
+
+            homeButton.style.display = "inline-block";
+            return;
+        }
+
+        if (!returnedState || returnedState !== savedState) {
+            status.className = "error";
+
+            status.innerHTML =
+                "<strong>Authentication state verification failed.</strong><br><br>" +
+                "Please start the login process again.";
+
+            sessionStorage.removeItem("oauth_state");
+            sessionStorage.removeItem("pkce_code_verifier");
+
+            homeButton.style.display = "inline-block";
+            return;
+        }
+
+        /*
+         * 4. The OAuth authorization code is valid.
+         *
+         * IMPORTANT:
+         * Do NOT exchange the code for an access token here.
+         * Deriv requires the token exchange to happen on your backend.
+         *
+         * We temporarily save the code so your backend can receive it
+         * through your own application flow.
+         */
+        sessionStorage.removeItem("oauth_state");
+
+        /*
+         * IMPORTANT SECURITY NOTE:
+         *
+         * The authorization code is intentionally NOT displayed
+         * on the page.
+         */
+
+        status.className = "success";
+
+        status.innerHTML =
+            "<strong>Deriv authentication successful.</strong><br><br>" +
+            "Authorization was received successfully.<br>" +
+            "Your application can now complete the secure server-side token exchange.";
+
+        homeButton.style.display = "inline-block";
+
+        /*
+         * Optional automatic return to the home page.
+         *
+         * Disabled by default so you can see the successful
+         * authentication message while testing.
+         *
+         * To enable it, remove the comments around this block.
+         */
+
+        /*
         setTimeout(function () {
             window.location.href =
                 "https://deriv-gorge.github.io/deriv-trading-site/";
-        }, 1500);
-    }
+        }, 2000);
+        */
 
-    // Nothing was returned
-    else {
-        message.innerHTML =
-            '<span class="error">No authorization code was received.</span>';
+    })();
+
+    /*
+     * Safely display values returned in the URL.
+     */
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 </script>
 
